@@ -1,0 +1,131 @@
+############Multi Area ospf########33
+
+step 1---------Configure addressing and loopbacks
+in r1
+int loopback1
+ip add 10.1.1.1  255.255.255.0
+int se0/1/0
+ip add 10.1.12.1  255.255.255.0
+clock rate 64000
+no shut
+
+in r2
+int loopback2
+ip add 10.1.2.1  255.255.255.0
+int se0/1/0
+ip add 10.1.12.2  255.255.255.0
+no shut
+int se0/1/1
+ip add 10.1.23.2  255.255.255.0
+no shut
+
+in r3
+int loopback3
+ip add 10.1.3.1  255.255.255.0
+int se0/1/1
+ip add 10.1.23.1  255.255.255.0
+no shut
+
+step 2---------Add interfaces into OSPF
+in r1 
+en
+conf t
+router ospf 1
+network 10.1.1.0 0.0.0.255 area 0
+network 10.1.12.0 0.0.0.255 area 0
+exit
+int loopback1
+ip ospf network point-to-point
+
+
+in r2
+en
+conf t
+router ospf 1
+network 10.1.2.0 0.0.0.255 area 0
+network 10.1.12.0 0.0.0.255 area 0
+exit
+int loopback2
+ip ospf netwok point-to-point
+route ospf 1
+network 10.1.23.0 0.0.0.255 area 23
+
+in r3
+en
+conf t
+router ospf 1
+network 10.1.3.0 0.0.0.255 area 23
+network 10.1.23.0 0.0.0.255 area 23
+exit
+conf t
+int loopback3
+ip ospf netwok point-to-point
+
+step 3---------Configure a stub area(toatl 2 ss one of r2 & one of r3)
+
+in r2
+en
+conf t
+router ospf 1
+area 23 stub
+
+in r3
+en
+conf t
+router ospf 1
+area 23 stub
+exit
+exit
+sh ip route-------- ss showing last line 0.0.0.0/0
+
+in r2
+sh ip ospf---- ss showing stud area line
+
+
+step 4--------Configure a totally stubby area.(ss of r2 & r3)
+in r2
+conf t
+router ospf 1
+area 23 stub no-summary
+
+to check this open r3
+in r3
+en
+sh ip route
+sh ip ospf database
+
+
+STEP 5----------------Configure a not-so-stubby area
+IN R2
+route ospf 1
+no area 23 stub 
+area 23 nssa
+
+IN R3
+route ospf 1
+no area 23 stub 
+area 23 nssa
+redistribute connected subnets
+exit
+exit
+sh ip route
+sh ip ospf
+
+step 6-------Configure OSPF interface authentication
+
+in r1
+en 
+conf t
+int se0/1/0
+ip  ospf authentication message-digest
+ip ospf message-digest-key 1 md5 cisco
+
+in r2
+en 
+conf t
+int se0/1/0
+ip ospf authentication message-digest
+ip ospf message-digest-key 1 md5 cisco
+exit
+exit
+sh ip ospf int se0/1/0
